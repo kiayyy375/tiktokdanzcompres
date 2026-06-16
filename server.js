@@ -10,7 +10,7 @@ app.use(express.urlencoded({ extended: true }));
 const upload = multer({
   dest: "/tmp",
   limits: {
-    fileSize: 200 * 1024 * 1024
+    fileSize: 300 * 1024 * 1024
   }
 });
 
@@ -23,7 +23,7 @@ app.get("/", (req, res) => {
 <title>TikTok Compressor</title>
 <style>
 body{
-  font-family:Arial;
+  font-family:Arial,sans-serif;
   max-width:600px;
   margin:40px auto;
   padding:20px;
@@ -55,9 +55,10 @@ required
 />
 
 <select name="mode">
-<option value="safe">Safe</option>
-<option value="hd" selected>HD</option>
-<option value="max">Max</option>
+  <option value="copy">Copy (No Re-Encode)</option>
+  <option value="crf18" selected>CRF18 (Best Quality)</option>
+  <option value="crf20">CRF20 (Balanced)</option>
+  <option value="crf22">CRF22 (Smaller Size)</option>
 </select>
 
 <button type="submit">
@@ -82,38 +83,47 @@ app.post("/compress", upload.single("video"), (req, res) => {
   const input = req.file.path;
   const output = `/tmp/output-${Date.now()}.mp4`;
 
-  const mode = req.body.mode || "hd";
+  const mode = req.body.mode || "crf18";
 
-  let bitrate = "3000k";
+  let command = "";
 
-  if (mode === "safe") {
-    bitrate = "2500k";
-  }
+  if (mode === "copy") {
 
-  if (mode === "hd") {
-    bitrate = "5000k";
-  }
+    command = `
+ffmpeg -y \
+-i "${input}" \
+-c:v copy \
+-c:a copy \
+-movflags +faststart \
+"${output}"
+`;
 
-  if (mode === "max") {
-    bitrate = "8000k";
-  }
+  } else {
 
-  const command = `
+    let crf = 18;
+
+    if (mode === "crf20") {
+      crf = 20;
+    }
+
+    if (mode === "crf22") {
+      crf = 22;
+    }
+
+    command = `
 ffmpeg -y \
 -i "${input}" \
 -c:v libx264 \
 -preset veryfast \
 -threads 2 \
--b:v ${bitrate} \
--maxrate ${bitrate} \
--bufsize 12000k \
--r 60 \
+-crf ${crf} \
 -pix_fmt yuv420p \
 -movflags +faststart \
 -c:a aac \
 -b:a 128k \
 "${output}"
 `;
+  }
 
   exec(command, (error, stdout, stderr) => {
 
