@@ -5,11 +5,14 @@ const fs = require("fs");
 
 const app = express();
 
-const upload = multer({
-  dest: "/tmp"
-});
-
 app.use(express.urlencoded({ extended: true }));
+
+const upload = multer({
+  dest: "/tmp",
+  limits: {
+    fileSize: 200 * 1024 * 1024
+  }
+});
 
 app.get("/", (req, res) => {
   res.send(`
@@ -20,90 +23,90 @@ app.get("/", (req, res) => {
 <title>TikTok Compressor</title>
 <style>
 body{
-  font-family: Arial, sans-serif;
+  font-family:Arial;
   max-width:600px;
-  margin:50px auto;
+  margin:40px auto;
   padding:20px;
-}
-h1{
-  text-align:center;
 }
 form{
   display:flex;
   flex-direction:column;
   gap:15px;
 }
-button{
+input,select,button{
   padding:12px;
-  cursor:pointer;
 }
-select,input{
-  padding:10px;
+button{
+  cursor:pointer;
 }
 </style>
 </head>
 <body>
 
-<h1>TikTok Compressor</h1>
+<h2>TikTok Compressor</h2>
 
 <form action="/compress" method="POST" enctype="multipart/form-data">
 
 <input
-  type="file"
-  name="video"
-  accept="video/*"
-  required
+type="file"
+name="video"
+accept="video/*"
+required
 />
 
 <select name="mode">
-  <option value="safe">Safe (Kecil)</option>
-  <option value="hd" selected>HD (Rekomendasi)</option>
-  <option value="max">Max Quality</option>
+<option value="safe">Safe</option>
+<option value="hd" selected>HD</option>
+<option value="max">Max</option>
 </select>
 
 <button type="submit">
-Compress Video
+Compress
 </button>
 
 </form>
 
 </body>
 </html>
-  `);
+`);
 });
 
 app.post("/compress", upload.single("video"), (req, res) => {
 
   if (!req.file) {
     return res.status(400).json({
-      error: "Video tidak ditemukan"
+      error: "No video uploaded"
     });
   }
 
+  const input = req.file.path;
+  const output = `/tmp/output-${Date.now()}.mp4`;
+
   const mode = req.body.mode || "hd";
 
-  const input = req.file.path;
-  const output = `/tmp/compressed-${Date.now()}.mp4`;
-
-  let crf = 22;
+  let bitrate = "3000k";
 
   if (mode === "safe") {
-    crf = 24;
+    bitrate = "2500k";
   }
 
   if (mode === "hd") {
-    crf = 22;
+    bitrate = "5000k";
   }
 
   if (mode === "max") {
-    crf = 20;
+    bitrate = "8000k";
   }
 
   const command = `
-ffmpeg -y -i "${input}" \
+ffmpeg -y \
+-i "${input}" \
 -c:v libx264 \
--preset slow \
--crf ${crf} \
+-preset veryfast \
+-threads 2 \
+-b:v ${bitrate} \
+-maxrate ${bitrate} \
+-bufsize 12000k \
 -r 60 \
 -pix_fmt yuv420p \
 -movflags +faststart \
@@ -116,9 +119,11 @@ ffmpeg -y -i "${input}" \
 
     if (error) {
 
-      if (fs.existsSync(input)) {
-        fs.unlinkSync(input);
-      }
+      try {
+        if (fs.existsSync(input)) {
+          fs.unlinkSync(input);
+        }
+      } catch {}
 
       return res.status(500).json({
         error: error.message,
@@ -151,5 +156,5 @@ ffmpeg -y -i "${input}" \
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
+  console.log("Server running on port", PORT);
 });
