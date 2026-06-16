@@ -68,7 +68,17 @@ app.post("/patch", upload.single("video"), async (req, res) => {
     await new Promise((resolve, reject) => {
 
       exec(
-        `ffmpeg -y -itsscale 2 -i "${inputFile}" -c copy -movflags +faststart "${outputFile}"`,
+        `ffmpeg -y \
+-itsscale 2 \
+-i "${inputFile}" \
+-r 60 \
+-c:v libx264 \
+-preset ultrafast \
+-crf 23 \
+-pix_fmt yuv420p \
+-c:a copy \
+-movflags +faststart \
+"${outputFile}"`,
         (error, stdout, stderr) => {
 
           if (error) {
@@ -79,7 +89,6 @@ app.post("/patch", upload.single("video"), async (req, res) => {
 
           console.log(stdout);
           resolve();
-
         }
       );
 
