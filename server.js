@@ -68,14 +68,18 @@ app.post("/patch", upload.single("video"), async (req, res) => {
     await new Promise((resolve, reject) => {
 
       exec(
-        `ffmpeg -y \
+  `ffmpeg -y \
 -itsscale 2 \
 -i "${inputFile}" \
+-vf "scale='if(gte(iw,ih),-2,720)':'if(gte(iw,ih),720,-2)'" \
 -r 60 \
 -c:v libx264 \
 -preset ultrafast \
--crf 23 \
+-crf 28 \
+-maxrate 6M \
+-bufsize 6M \
 -pix_fmt yuv420p \
+-threads 1 \
 -c:a copy \
 -movflags +faststart \
 "${outputFile}"`,
