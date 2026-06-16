@@ -230,19 +230,8 @@ function boxPayload(box) {
 }
 
 function buildMdhd(box) {
-  const payload = boxPayload(box);
-  const view = new DataView(payload.buffer);
-  const version = payload[0];
-
-  if (version !== 0) {
-    throw new Error(`Versao mdhd nao suportada nesse metodo: ${version}.`);
-  }
-
-  view.setUint32(12, VIDEO_TIMESCALE, false);
-  view.setUint32(16, VIDEO_DURATION, false);
-  return makeBox('mdhd', payload);
+  return boxBytes(box);
 }
-
 function buildElst(box) {
   const payload = boxPayload(box);
   const view = new DataView(payload.buffer);
@@ -444,12 +433,11 @@ function patchSharkSampleTableMethod(arrayBuffer) {
     .map(boxBytes);
 
   const fixedReplacements = new Map([
-    [mdhd, buildMdhd(mdhd)],
-    [elst, buildElst(elst)],
-    [stts, buildStts(realSampleCount, fakeSampleCount)],
-    [stsc, buildStsc(originalStscRows, originalChunkOffsets.length)],
-    [stsz, buildStsz(originalSizes, fakeSampleCount)],
-  ]);
+  [elst, buildElst(elst)],
+  [stts, buildStts(realSampleCount, fakeSampleCount)],
+  [stsc, buildStsc(originalStscRows, originalChunkOffsets.length)],
+  [stsz, buildStsz(originalSizes, fakeSampleCount)],
+]);
 
   const placeholderReplacements = new Map(fixedReplacements);
   buildStcoReplacements(stcoBoxes, stco, 0, 0, fakeSampleCount).forEach((value, key) => {
