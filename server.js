@@ -75,7 +75,7 @@ app.post("/patch", upload.single("video"), async (req, res) => {
 -r 60 \
 -c:v libx264 \
 -preset ultrafast \
--crf 28 \
+-crf 20 \
 -maxrate 6M \
 -bufsize 6M \
 -pix_fmt yuv420p \
