@@ -22,50 +22,93 @@ res.send(`
 </head>
 <body>
 <h2>TikTok Compressor</h2><form action="/patch" method="POST" enctype="multipart/form-data">
-<input type="file" name="video" required>
-<button type="submit">Compress Video</button>
+  <input type="file" name="video" required>
+  <button type="submit">Process Video</button>
 </form></body>
 </html>
 `);
 });app.post("/patch", upload.single("video"), async (req, res) => {
-let input = null;
-let output = null;
+
+let inputFile = null;
+let outputFile = null;
 
 try {
-input = req.file.path;
-output = "/tmp/output-${Date.now()}.mp4";
+
+if (!req.file) {
+  return res.status(400).json({
+    error: "No file uploaded"
+  });
+}
+
+inputFile = req.file.path;
+
+outputFile = `/tmp/output-${Date.now()}.mp4`;
+
+console.log("INPUT:", inputFile);
+console.log("OUTPUT:", outputFile);
 
 await new Promise((resolve, reject) => {
+
   exec(
-    `ffmpeg -y -itsscale 2 -i "${input}" -c copy -map 0 -movflags +faststart "${output}"`,
-    (err) => {
-      if (err) reject(err);
-      else resolve();
+    `ffmpeg -y -itsscale 2 -i "${inputFile}" -c copy -map 0 -movflags +faststart "${outputFile}"`,
+    (error, stdout, stderr) => {
+
+      if (error) {
+        console.error(stderr);
+        reject(error);
+        return;
+      }
+
+      resolve();
     }
   );
+
 });
 
-res.download(output, "video_clean.mp4", () => {
+res.download(outputFile, "video_clean.mp4", () => {
+
   try {
-    if (input && fs.existsSync(input)) fs.unlinkSync(input);
-    if (output && fs.existsSync(output)) fs.unlinkSync(output);
-  } catch {}
+
+    if (inputFile && fs.existsSync(inputFile)) {
+      fs.unlinkSync(inputFile);
+    }
+
+    if (outputFile && fs.existsSync(outputFile)) {
+      fs.unlinkSync(outputFile);
+    }
+
+  } catch (e) {
+    console.error(e);
+  }
+
 });
 
 } catch (err) {
 
+console.error(err);
+
 try {
-  if (input && fs.existsSync(input)) fs.unlinkSync(input);
-  if (output && fs.existsSync(output)) fs.unlinkSync(output);
-} catch {}
+
+  if (inputFile && fs.existsSync(inputFile)) {
+    fs.unlinkSync(inputFile);
+  }
+
+  if (outputFile && fs.existsSync(outputFile)) {
+    fs.unlinkSync(outputFile);
+  }
+
+} catch (e) {}
 
 res.status(500).json({
   error: err.message
 });
 
 }
+
 });
 
-app.listen(process.env.PORT || 3000, () => {
-console.log("Server running");
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+console.log("Server running on port ${PORT}");
 });
