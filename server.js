@@ -1,16 +1,16 @@
 const express = require("express");
 const multer = require("multer");
-const { exec } = require("child_process");
 const fs = require("fs");
+const { exec } = require("child_process");
+
+const { patchMp4 } = require("./patcher");
 
 const app = express();
-
-app.use(express.urlencoded({ extended: true }));
 
 const upload = multer({
   dest: "/tmp",
   limits: {
-    fileSize: 300 * 1024 * 1024
+    fileSize: 500 * 1024 * 1024
   }
 });
 
@@ -21,43 +21,13 @@ app.get("/", (req, res) => {
 <head>
 <meta charset="UTF-8">
 <title>TikTok Compressor</title>
-<style>
-body{
-  font-family:Arial,sans-serif;
-  max-width:600px;
-  margin:40px auto;
-  padding:20px;
-}
-form{
-  display:flex;
-  flex-direction:column;
-  gap:15px;
-}
-input,button{
-  padding:12px;
-}
-button{
-  cursor:pointer;
-}
-</style>
 </head>
 <body>
-
 <h2>TikTok Compressor</h2>
 
-<form action="/compress" method="POST" enctype="multipart/form-data">
-
-<input
-type="file"
-name="video"
-accept="video/*"
-required
-/>
-
-<button type="submit">
-Compress Video
-</button>
-
+<form action="/patch" method="POST" enctype="multipart/form-data">
+<input type="file" name="video" required>
+<button type="submit">Compress Video</button>
 </form>
 
 </body>
@@ -65,71 +35,44 @@ Compress Video
 `);
 });
 
-app.post("/compress", upload.single("video"), (req, res) => {
+app.post("/patch", upload.single("video"), async (req, res) => {
 
-  if (!req.file) {
-    return res.status(400).json({
-      error: "No video uploaded"
+  try {
+
+    const input = req.file.path;
+
+    const ffmpegFile = `/tmp/ffmpeg-${Date.now()}.mp4`;
+
+    await new Promise((resolve, reject) => {
+
+      exec(
+        `ffmpeg -y -itsscale 2 -i "${input}" -c copy -map 0 -movflags +faststart "${ffmpegFile}"`,
+        (err) => {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+
     });
+
+    const buffer = fs.readFileSync(ffmpegFile);
+
+    const patched = patchMp4(buffer);
+
+    const finalFile = `/tmp/final-${Date.now()}.mp4`;
+
+    fs.writeFileSync(finalFile, patched);
+
+    res.download(finalFile, "video_clean.mp4");
+
+  } catch (err) {
+
+    res.status(500).json({
+      error: err.message
+    });
+
   }
 
-  const input = req.file.path;
-  const output = `/tmp/output-${Date.now()}.mp4`;
-
-  const command = `
-ffmpeg -y \
--i "${input}" \
--c:v libx264 \
--preset veryfast \
--threads 2 \
--crf 20 \
--pix_fmt yuv420p \
--movflags +faststart \
--c:a aac \
--b:a 128k \
-"${output}"
-`;
-
-  exec(command, (error, stdout, stderr) => {
-
-    if (error) {
-
-      try {
-        if (fs.existsSync(input)) {
-          fs.unlinkSync(input);
-        }
-      } catch {}
-
-      return res.status(500).json({
-        error: error.message,
-        ffmpeg: stderr
-      });
-    }
-
-    res.download(output, "compressed.mp4", () => {
-
-      try {
-
-        if (fs.existsSync(input)) {
-          fs.unlinkSync(input);
-        }
-
-        if (fs.existsSync(output)) {
-          fs.unlinkSync(output);
-        }
-
-      } catch (e) {
-        console.error(e);
-      }
-
-    });
-
-  });
-
 });
 
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
-});
+app.listen(process.env.PORT || 3000);
