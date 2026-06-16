@@ -19,13 +19,26 @@ app.get("/", (req, res) => {
 <head>
 <meta charset="UTF-8">
 <title>TikTok Compressor</title>
+<style>
+body{
+  font-family: Arial, sans-serif;
+  max-width: 500px;
+  margin: 50px auto;
+  text-align: center;
+}
+button{
+  padding:10px 20px;
+}
+</style>
 </head>
 <body>
+
 <h2>TikTok Compressor</h2>
 
 <form action="/patch" method="POST" enctype="multipart/form-data">
-<input type="file" name="video" accept="video/*" required>
-<button type="submit">Process Video</button>
+  <input type="file" name="video" accept="video/*" required>
+  <br><br>
+  <button type="submit">Process Video</button>
 </form>
 
 </body>
@@ -55,7 +68,7 @@ app.post("/patch", upload.single("video"), async (req, res) => {
     await new Promise((resolve, reject) => {
 
       exec(
-        `ffmpeg -y -i "${inputFile}" -c copy -movflags +faststart "${outputFile}"`,
+        `ffmpeg -y -itsscale 2 -i "${inputFile}" -c copy -movflags +faststart "${outputFile}"`,
         (error, stdout, stderr) => {
 
           if (error) {
@@ -64,13 +77,15 @@ app.post("/patch", upload.single("video"), async (req, res) => {
             return;
           }
 
+          console.log(stdout);
           resolve();
+
         }
       );
 
     });
 
-    res.download(outputFile, "video_clean.mp4", () => {
+    res.download(outputFile, "video_clean.mp4", (err) => {
 
       try {
 
@@ -84,6 +99,10 @@ app.post("/patch", upload.single("video"), async (req, res) => {
 
       } catch (e) {
         console.error(e);
+      }
+
+      if (err) {
+        console.error(err);
       }
 
     });
