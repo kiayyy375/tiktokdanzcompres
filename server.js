@@ -19,26 +19,13 @@ app.get("/", (req, res) => {
 <head>
 <meta charset="UTF-8">
 <title>TikTok Compressor</title>
-<style>
-body{
-  font-family:Arial,sans-serif;
-  max-width:500px;
-  margin:50px auto;
-  padding:20px;
-}
-button{
-  padding:10px 20px;
-}
-</style>
 </head>
 <body>
-
 <h2>TikTok Compressor</h2>
 
 <form action="/patch" method="POST" enctype="multipart/form-data">
-  <input type="file" name="video" accept="video/*" required>
-  <br><br>
-  <button type="submit">Process Video</button>
+<input type="file" name="video" accept="video/*" required>
+<button type="submit">Process Video</button>
 </form>
 
 </body>
@@ -68,15 +55,7 @@ app.post("/patch", upload.single("video"), async (req, res) => {
     await new Promise((resolve, reject) => {
 
       exec(
-        `ffmpeg -y -i "${inputFile}" \
--c:v libx264 \
--preset veryfast \
--crf 18 \
--pix_fmt yuv420p \
--c:a aac \
--b:a 192k \
--movflags +faststart \
-"${outputFile}"`,
+        `ffmpeg -y -i "${inputFile}" -c copy -movflags +faststart "${outputFile}"`,
         (error, stdout, stderr) => {
 
           if (error) {
@@ -86,7 +65,6 @@ app.post("/patch", upload.single("video"), async (req, res) => {
           }
 
           resolve();
-
         }
       );
 
