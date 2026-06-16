@@ -33,7 +33,7 @@ form{
   flex-direction:column;
   gap:15px;
 }
-input,select,button{
+input,button{
   padding:12px;
 }
 button{
@@ -54,15 +54,8 @@ accept="video/*"
 required
 />
 
-<select name="mode">
-  <option value="copy">Copy (No Re-Encode)</option>
-  <option value="crf18" selected>CRF18 (Best Quality)</option>
-  <option value="crf20">CRF20 (Balanced)</option>
-  <option value="crf22">CRF22 (Smaller Size)</option>
-</select>
-
 <button type="submit">
-Compress
+Compress Video
 </button>
 
 </form>
@@ -83,47 +76,19 @@ app.post("/compress", upload.single("video"), (req, res) => {
   const input = req.file.path;
   const output = `/tmp/output-${Date.now()}.mp4`;
 
-  const mode = req.body.mode || "crf18";
-
-  let command = "";
-
-  if (mode === "copy") {
-
-    command = `
-ffmpeg -y \
--i "${input}" \
--c:v copy \
--c:a copy \
--movflags +faststart \
-"${output}"
-`;
-
-  } else {
-
-    let crf = 18;
-
-    if (mode === "crf20") {
-      crf = 20;
-    }
-
-    if (mode === "crf22") {
-      crf = 22;
-    }
-
-    command = `
+  const command = `
 ffmpeg -y \
 -i "${input}" \
 -c:v libx264 \
 -preset veryfast \
 -threads 2 \
--crf ${crf} \
+-crf 20 \
 -pix_fmt yuv420p \
 -movflags +faststart \
 -c:a aac \
 -b:a 128k \
 "${output}"
 `;
-  }
 
   exec(command, (error, stdout, stderr) => {
 
@@ -166,5 +131,5 @@ ffmpeg -y \
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("Server running on port", PORT);
+  console.log("Server running on port " + PORT);
 });
